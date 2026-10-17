@@ -1,6 +1,6 @@
 # 🎬 KINAMAX Pro - Telegram Kino Bot
 
-## 🌟 Versiya 2.1 Final - Professional & Mukammal
+## 🌟 Versiya 2.1.1 Final - Professional & Mukammal
 
 ### ✨ Barcha Xususiyatlar
 
@@ -13,6 +13,10 @@
 4. **📢 Kanal havolalari** - Public va private kanallar uchun
 5. **🔐 Majburiy obuna** - Professional va xavfsiz
 6. **🎬 Video yuborish** - To'liq ishlayapti
+
+#### Uchinchi Versiya (2.1.1):
+7. **🛡️ Error Handling** - "Mavjud emas" xatoligi hal qilindi
+8. **📱 User Experience** - Professional xabarlar
 
 ---
 
@@ -71,6 +75,7 @@ python3 bot.py
 ### Asosiy:
 - **[README.md](README.md)** - Asosiy dokumentatsiya
 - **[TAYYOR.md](TAYYOR.md)** - ✅ Tezkor boshlash (BOSHLASH SHU YERDAN!)
+- **[XATOLIK_HAL_QILINDI.md](XATOLIK_HAL_QILINDI.md)** - ⚡ "Mavjud emas" xatoligi (YANGI!)
 
 ### Batafsil:
 - **[YANGI_TUZATISHLAR.md](YANGI_TUZATISHLAR.md)** - So'nggi o'zgarishlar (v2.1)

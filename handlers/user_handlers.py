@@ -230,7 +230,15 @@ async def watch_movie(cb: CallbackQuery, bot: Bot):
     ok, not_subscribed = await check_subscriptions(bot, cb.from_user.id)
     if not ok:
         kb = build_subscription_keyboard(not_subscribed, "check_sub")
-        await cb.message.answer("⚠️ Ko'rish uchun avval kanallarga obuna bo'ling:", reply_markup=kb)
+        try:
+            await cb.message.answer(
+                "⚠️ <b>Ko'rish uchun kanallarga obuna bo'ling!</b>\n\n"
+                "👇 Quyidagi kanallarga obuna bo'lib, keyin «✅ Obunani tekshirish» tugmasini bosing:",
+                parse_mode="HTML",
+                reply_markup=kb
+            )
+        except Exception:
+            pass
         await cb.answer("❌ Obuna bo'lmadingiz!", show_alert=True)
         return
 
@@ -248,14 +256,36 @@ async def watch_movie(cb: CallbackQuery, bot: Bot):
             )
             await cb.answer("✅ Video yuborildi!", show_alert=False)
         except Exception as e:
-            await cb.message.answer(f"❌ Videoni yuklashda xatolik: {e}")
-            await cb.answer("❌ Xatolik!", show_alert=True)
+            error_msg = str(e).lower()
+            if 'blocked' in error_msg or 'deactivated' in error_msg or 'not found' in error_msg:
+                # User botni bloklagan yoki o'chirgan
+                await cb.answer(
+                    "❌ Botni qayta ishga tushiring (/start yuboring)",
+                    show_alert=True
+                )
+            else:
+                # Boshqa xatolik
+                try:
+                    await cb.message.answer(
+                        f"❌ Video yuborishda xatolik yuz berdi.\n\n"
+                        f"Iltimos qayta urinib ko'ring yoki adminga murojaat qiling."
+                    )
+                except Exception:
+                    pass
+                await cb.answer("❌ Xatolik!", show_alert=True)
     elif movie["video_url"]:
-        await cb.message.answer(
-            f"🎬 <b>{movie['title']}</b>\n\n🎥 Ko'rish: {movie['video_url']}",
-            parse_mode="HTML"
-        )
-        await cb.answer("✅ Video havolasi yuborildi!", show_alert=False)
+        try:
+            await cb.message.answer(
+                f"🎬 <b>{movie['title']}</b>\n\n🎥 Ko'rish: {movie['video_url']}",
+                parse_mode="HTML"
+            )
+            await cb.answer("✅ Video havolasi yuborildi!", show_alert=False)
+        except Exception as e:
+            error_msg = str(e).lower()
+            if 'blocked' in error_msg or 'deactivated' in error_msg:
+                await cb.answer("❌ Botni qayta ishga tushiring (/start)", show_alert=True)
+            else:
+                await cb.answer("❌ Xatolik!", show_alert=True)
     else:
         await cb.answer("Video hali qo'shilmagan", show_alert=True)
 
@@ -311,7 +341,15 @@ async def watch_episode(cb: CallbackQuery, bot: Bot):
     ok, not_subscribed = await check_subscriptions(bot, cb.from_user.id)
     if not ok:
         kb = build_subscription_keyboard(not_subscribed, "check_sub")
-        await cb.message.answer("⚠️ Ko'rish uchun avval kanallarga obuna bo'ling:", reply_markup=kb)
+        try:
+            await cb.message.answer(
+                "⚠️ <b>Ko'rish uchun kanallarga obuna bo'ling!</b>\n\n"
+                "👇 Quyidagi kanallarga obuna bo'lib, keyin «✅ Obunani tekshirish» tugmasini bosing:",
+                parse_mode="HTML",
+                reply_markup=kb
+            )
+        except Exception:
+            pass
         await cb.answer("❌ Obuna bo'lmadingiz!", show_alert=True)
         return
     
@@ -329,13 +367,35 @@ async def watch_episode(cb: CallbackQuery, bot: Bot):
             )
             await cb.answer("✅ Video yuborildi!", show_alert=False)
         except Exception as e:
-            await cb.message.answer(f"❌ Videoni yuklashda xatolik: {e}")
-            await cb.answer("❌ Xatolik!", show_alert=True)
+            error_msg = str(e).lower()
+            if 'blocked' in error_msg or 'deactivated' in error_msg or 'not found' in error_msg:
+                # User botni bloklagan yoki o'chirgan
+                await cb.answer(
+                    "❌ Botni qayta ishga tushiring (/start yuboring)",
+                    show_alert=True
+                )
+            else:
+                # Boshqa xatolik
+                try:
+                    await cb.message.answer(
+                        f"❌ Video yuborishda xatolik yuz berdi.\n\n"
+                        f"Iltimos qayta urinib ko'ring yoki adminga murojaat qiling."
+                    )
+                except Exception:
+                    pass
+                await cb.answer("❌ Xatolik!", show_alert=True)
     elif episode["video_url"]:
-        await cb.message.answer(
-            f"📺 <b>{ep_title}</b>\n\n🎥 Ko'rish: {episode['video_url']}",
-            parse_mode="HTML"
-        )
-        await cb.answer("✅ Video havolasi yuborildi!", show_alert=False)
+        try:
+            await cb.message.answer(
+                f"📺 <b>{ep_title}</b>\n\n🎥 Ko'rish: {episode['video_url']}",
+                parse_mode="HTML"
+            )
+            await cb.answer("✅ Video havolasi yuborildi!", show_alert=False)
+        except Exception as e:
+            error_msg = str(e).lower()
+            if 'blocked' in error_msg or 'deactivated' in error_msg:
+                await cb.answer("❌ Botni qayta ishga tushiring (/start)", show_alert=True)
+            else:
+                await cb.answer("❌ Xatolik!", show_alert=True)
     else:
         await cb.answer("❌ Video hali qo'shilmagan", show_alert=True)
