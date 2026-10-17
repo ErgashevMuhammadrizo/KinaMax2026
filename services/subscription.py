@@ -21,11 +21,35 @@ async def check_subscriptions(bot: Bot, user_id: int):
 
 
 def build_subscription_keyboard(not_subscribed: list, check_data: str = "check_sub"):
+    """
+    Majburiy obuna kanallarini ko'rsatadi.
+    Agar kanal username bo'lsa: https://t.me/username
+    Agar kanal ID bo'lsa: https://t.me/c/channel_id (private kanal)
+    """
     buttons = []
     for sub in not_subscribed:
         text = sub["channel_title"] or "Kanal"
-        url = f"https://t.me/{sub['channel_username'].lstrip('@')}" if sub["channel_username"] else None
-        if url:
-            buttons.append([InlineKeyboardButton(text=f"📢 {text}", url=url)])
+        
+        # Agar username bo'lsa
+        if sub["channel_username"]:
+            username = sub["channel_username"].lstrip('@')
+            url = f"https://t.me/{username}"
+        # Agar faqat ID bo'lsa (private kanal)
+        elif sub["channel_id"]:
+            # -100 prefiksini olib tashlaymiz va kanal linkini yasaymiz
+            channel_id_str = str(sub["channel_id"])
+            if channel_id_str.startswith('-100'):
+                clean_id = channel_id_str[4:]  # -100 ni olib tashlash
+                url = f"https://t.me/c/{clean_id}/1"
+            else:
+                # Fallback - to'g'ridan-to'g'ri ID
+                url = f"https://t.me/c/{channel_id_str.lstrip('-')}/1"
+        else:
+            # Agar hech narsa bo'lmasa, tugmani qo'shmaymiz
+            continue
+        
+        buttons.append([InlineKeyboardButton(text=f"📢 {text}", url=url)])
+    
+    # Tekshirish tugmasi
     buttons.append([InlineKeyboardButton(text="✅ Obunani tekshirish", callback_data=check_data)])
     return InlineKeyboardMarkup(inline_keyboard=buttons)

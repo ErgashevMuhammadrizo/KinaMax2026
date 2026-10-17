@@ -1,12 +1,18 @@
 # 🎬 KINAMAX Pro - Telegram Kino Bot
 
-## 🌟 Versiya 2.0 - Yangi Xususiyatlar
+## 🌟 Versiya 2.1 Final - Professional & Mukammal
 
-### ✨ Nima yangi?
+### ✨ Barcha Xususiyatlar
 
-1. **📺 Serial qidirish** - Foydalanuvchilar endi serial ID orqali qidirishlari va fasl/qismlarni ko'rishlari mumkin
-2. **🆔 User ID** - /start bosilganda foydalanuvchining Telegram ID si ko'rsatiladi  
-3. **💾 Baza kanal tizimi** - Videolar BASE_CHANNEL ga yuklanadi, bazada faqat message_id saqlanadi (xotira 99% tejaldi!)
+#### Birinchi Versiya (2.0):
+1. **📺 Serial qidirish** - To'liq fasl va qismlar bilan
+2. **🆔 User ID** - /start da ko'rsatiladi  
+3. **💾 Baza kanal** - Xotira 99% tejaldi
+
+#### Ikkinchi Versiya (2.1):
+4. **📢 Kanal havolalari** - Public va private kanallar uchun
+5. **🔐 Majburiy obuna** - Professional va xavfsiz
+6. **🎬 Video yuborish** - To'liq ishlayapti
 
 ---
 
@@ -62,9 +68,21 @@ python3 bot.py
 
 ## 📚 Hujjatlar
 
-- **[CHANGELOG.md](CHANGELOG.md)** - Barcha o'zgarishlar ro'yxati
+### Asosiy:
+- **[README.md](README.md)** - Asosiy dokumentatsiya
+- **[TAYYOR.md](TAYYOR.md)** - ✅ Tezkor boshlash (BOSHLASH SHU YERDAN!)
+
+### Batafsil:
+- **[YANGI_TUZATISHLAR.md](YANGI_TUZATISHLAR.md)** - So'nggi o'zgarishlar (v2.1)
+- **[CHANGELOG.md](CHANGELOG.md)** - Barcha o'zgarishlar (v2.0)
 - **[QANDAY_ISHLATISH.md](QANDAY_ISHLATISH.md)** - To'liq qo'llanma
 - **[TUZATILGAN_MUAMMOLAR.md](TUZATILGAN_MUAMMOLAR.md)** - Hal qilingan muammolar
+
+### Scriptlar:
+- **test_bot.py** - Bot va kanallarni test qilish
+- **test_subscription_links.py** - Obuna linklar test
+- **add_test_subscription.py** - Kanal qo'shish
+- **migrate_db.py** - Database yangilash
 
 ---
 

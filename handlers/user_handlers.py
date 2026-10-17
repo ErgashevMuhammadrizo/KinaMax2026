@@ -106,7 +106,12 @@ async def cmd_start(message: Message, bot: Bot):
             ok, not_subscribed = await check_subscriptions(bot, message.from_user.id)
             if not ok:
                 kb = build_subscription_keyboard(not_subscribed, "check_sub")
-                await message.answer("⚠️ Ko'rish uchun avval kanallarga obuna bo'ling:", reply_markup=kb)
+                await message.answer(
+                    "⚠️ <b>Kino ko'rish uchun kanallarga obuna bo'ling!</b>\n\n"
+                    "👇 Quyidagi kanallarga obuna bo'lib, keyin «✅ Obunani tekshirish» tugmasini bosing:",
+                    parse_mode="HTML",
+                    reply_markup=kb
+                )
                 return
             await update_movie_views(movie["id"])
             await send_movie_info(message, bot, movie, message.from_user.id)
@@ -122,7 +127,12 @@ async def cmd_start(message: Message, bot: Bot):
             ok, not_subscribed = await check_subscriptions(bot, message.from_user.id)
             if not ok:
                 kb = build_subscription_keyboard(not_subscribed, "check_sub")
-                await message.answer("⚠️ Ko'rish uchun avval kanallarga obuna bo'ling:", reply_markup=kb)
+                await message.answer(
+                    "⚠️ <b>Serial ko'rish uchun kanallarga obuna bo'ling!</b>\n\n"
+                    "👇 Quyidagi kanallarga obuna bo'lib, keyin «✅ Obunani tekshirish» tugmasini bosing:",
+                    parse_mode="HTML",
+                    reply_markup=kb
+                )
                 return
             await send_serial_info(message, bot, serial, message.from_user.id)
             return
@@ -181,7 +191,12 @@ async def search_by_code(message: Message, bot: Bot):
     ok, not_subscribed = await check_subscriptions(bot, message.from_user.id)
     if not ok:
         kb = build_subscription_keyboard(not_subscribed)
-        await message.answer("⚠️ Ko'rish uchun avval kanallarga obuna bo'ling:", reply_markup=kb)
+        await message.answer(
+            "⚠️ <b>Kino/Serial ko'rish uchun kanallarga obuna bo'ling!</b>\n\n"
+            "👇 Quyidagi kanallarga obuna bo'lib, keyin «✅ Obunani tekshirish» tugmasini bosing:",
+            parse_mode="HTML",
+            reply_markup=kb
+        )
         return
 
     # Avval kinoda qidiramiz
@@ -204,10 +219,19 @@ async def search_by_code(message: Message, bot: Bot):
 
 @router.callback_query(F.data.startswith("watch_"))
 async def watch_movie(cb: CallbackQuery, bot: Bot):
+    """Kinoni ko'rsatadi (majburiy obunani tekshirish bilan)"""
     movie_id = int(cb.data.split("_")[1])
     movie = await get_movie_by_id(movie_id)
     if not movie:
         await cb.answer("Kino topilmadi", show_alert=True)
+        return
+
+    # Majburiy obunani tekshirish
+    ok, not_subscribed = await check_subscriptions(bot, cb.from_user.id)
+    if not ok:
+        kb = build_subscription_keyboard(not_subscribed, "check_sub")
+        await cb.message.answer("⚠️ Ko'rish uchun avval kanallarga obuna bo'ling:", reply_markup=kb)
+        await cb.answer("❌ Obuna bo'lmadingiz!", show_alert=True)
         return
 
     await update_movie_views(movie_id)
@@ -222,13 +246,16 @@ async def watch_movie(cb: CallbackQuery, bot: Bot):
                 caption=f"🎬 <b>{movie['title']}</b>\n\nTomosha qiling!",
                 parse_mode="HTML"
             )
+            await cb.answer("✅ Video yuborildi!", show_alert=False)
         except Exception as e:
             await cb.message.answer(f"❌ Videoni yuklashda xatolik: {e}")
+            await cb.answer("❌ Xatolik!", show_alert=True)
     elif movie["video_url"]:
         await cb.message.answer(
             f"🎬 <b>{movie['title']}</b>\n\n🎥 Ko'rish: {movie['video_url']}",
             parse_mode="HTML"
         )
+        await cb.answer("✅ Video havolasi yuborildi!", show_alert=False)
     else:
         await cb.answer("Video hali qo'shilmagan", show_alert=True)
 
@@ -272,12 +299,20 @@ async def show_season_episodes(cb: CallbackQuery, bot: Bot):
 
 @router.callback_query(F.data.startswith("episode_"))
 async def watch_episode(cb: CallbackQuery, bot: Bot):
-    """Qismni ko'rsatadi"""
+    """Qismni ko'rsatadi (majburiy obunani tekshirish bilan)"""
     episode_id = int(cb.data.split("_")[1])
     episode = await get_episode(episode_id)
     
     if not episode:
         await cb.answer("❌ Qism topilmadi", show_alert=True)
+        return
+    
+    # Majburiy obunani tekshirish
+    ok, not_subscribed = await check_subscriptions(bot, cb.from_user.id)
+    if not ok:
+        kb = build_subscription_keyboard(not_subscribed, "check_sub")
+        await cb.message.answer("⚠️ Ko'rish uchun avval kanallarga obuna bo'ling:", reply_markup=kb)
+        await cb.answer("❌ Obuna bo'lmadingiz!", show_alert=True)
         return
     
     ep_title = episode['title'] or f"Qism {episode['episode_number']}"
@@ -292,15 +327,15 @@ async def watch_episode(cb: CallbackQuery, bot: Bot):
                 caption=f"📺 <b>{ep_title}</b>\n\nTomosha qiling!",
                 parse_mode="HTML"
             )
-            await cb.answer()
+            await cb.answer("✅ Video yuborildi!", show_alert=False)
         except Exception as e:
             await cb.message.answer(f"❌ Videoni yuklashda xatolik: {e}")
-            await cb.answer()
+            await cb.answer("❌ Xatolik!", show_alert=True)
     elif episode["video_url"]:
         await cb.message.answer(
             f"📺 <b>{ep_title}</b>\n\n🎥 Ko'rish: {episode['video_url']}",
             parse_mode="HTML"
         )
-        await cb.answer()
+        await cb.answer("✅ Video havolasi yuborildi!", show_alert=False)
     else:
         await cb.answer("❌ Video hali qo'shilmagan", show_alert=True)
