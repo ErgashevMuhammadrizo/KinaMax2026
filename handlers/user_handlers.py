@@ -3,10 +3,11 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKe
 from aiogram.filters import CommandStart
 from aiogram.fsm.state import State, StatesGroup
 
+from config import BASE_CHANNEL_ID
 from keyboards.user_kb import main_menu_kb
 from database.db import (
     get_movie_by_code, get_movie_by_id, update_movie_views,
-    add_or_update_user
+    add_or_update_user, get_serial_by_code, get_seasons, get_episodes, get_episode
 )
 from services.subscription import check_subscriptions, build_subscription_keyboard
 
@@ -31,7 +32,7 @@ async def send_movie_info(target, bot: Bot, movie, user_id: int):
     )
 
     rows = []
-    if movie["video_file_id"] or movie["video_url"]:
+    if movie["video_message_id"] or movie["video_url"]:
         rows.append([InlineKeyboardButton(text="▶️ Ko'rish", callback_data=f"watch_{movie['id']}")])
     kb = InlineKeyboardMarkup(inline_keyboard=rows)
 
@@ -43,6 +44,41 @@ async def send_movie_info(target, bot: Bot, movie, user_id: int):
     else:  # CallbackQuery
         if movie["poster_file_id"]:
             await target.message.answer_photo(photo=movie["poster_file_id"], caption=caption, parse_mode="HTML", reply_markup=kb)
+        else:
+            await target.message.answer(caption, parse_mode="HTML", reply_markup=kb)
+
+
+async def send_serial_info(target, bot: Bot, serial, user_id: int):
+    """Serial ma'lumotlarini yuboradi"""
+    seasons = await get_seasons(serial['id'])
+    
+    caption = (
+        f"📺 <b>{serial['title']}</b>\n"
+        f"📅 Yil: {serial['year'] or '—'}\n"
+        f"🎭 Janr: {serial['genre'] or '—'}\n"
+        f"📁 Fasllar: {len(seasons)}\n"
+        f"🔑 ID: <code>{serial['code']}</code>"
+    )
+
+    # Fasllarni tugmalar ko'rinishida ko'rsatish
+    rows = []
+    for season in seasons:
+        season_title = season['title'] or f"Fasl {season['season_number']}"
+        rows.append([InlineKeyboardButton(
+            text=f"📁 {season_title}",
+            callback_data=f"season_{season['id']}"
+        )])
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=rows)
+
+    if isinstance(target, Message):
+        if serial["poster_file_id"]:
+            await target.answer_photo(photo=serial["poster_file_id"], caption=caption, parse_mode="HTML", reply_markup=kb)
+        else:
+            await target.answer(caption, parse_mode="HTML", reply_markup=kb)
+    else:  # CallbackQuery
+        if serial["poster_file_id"]:
+            await target.message.answer_photo(photo=serial["poster_file_id"], caption=caption, parse_mode="HTML", reply_markup=kb)
         else:
             await target.message.answer(caption, parse_mode="HTML", reply_markup=kb)
 
@@ -78,13 +114,33 @@ async def cmd_start(message: Message, bot: Bot):
         await message.answer("❌ Kino topilmadi.")
         return
 
+    # Deep link orqali kelgan: /start serial_0001
+    if param and param.startswith("serial_"):
+        code = param.replace("serial_", "")
+        serial = await get_serial_by_code(code)
+        if serial:
+            ok, not_subscribed = await check_subscriptions(bot, message.from_user.id)
+            if not ok:
+                kb = build_subscription_keyboard(not_subscribed, "check_sub")
+                await message.answer("⚠️ Ko'rish uchun avval kanallarga obuna bo'ling:", reply_markup=kb)
+                return
+            await send_serial_info(message, bot, serial, message.from_user.id)
+            return
+        await message.answer("❌ Serial topilmadi.")
+        return
+
     # Professional salomlashuv xabari
     name = message.from_user.first_name or "Do'stim"
+    user_id = message.from_user.id
     welcome_text = (
         f"🎬 <b>KINAMAX</b> ga xush kelibsiz, <b>{name}</b>!\n\n"
         f"━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🆔 <b>Sizning ID:</b> <code>{user_id}</code>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━\n"
         f"🍿 <b>Nima ko'rmoqchisiz?</b>\n\n"
         f"🎥 <b>Kino</b> — ID raqamini yuboring\n"
+        f"   <i>Misol: <code>0001</code></i>\n\n"
+        f"📺 <b>Serial</b> — ID raqamini yuboring\n"
         f"   <i>Misol: <code>0001</code></i>\n\n"
         f"🔍 <b>Qanday ishlaydi?</b>\n"
         f"   Kanal postida ko'rgan ID raqamini\n"
@@ -119,7 +175,7 @@ async def help_info_cb(cb: CallbackQuery):
 
 @router.message(F.text.regexp(r'^\d{1,4}$'))
 async def search_by_code(message: Message, bot: Bot):
-    """Foydalanuvchi raqam yuborganda qidiradi"""
+    """Foydalanuvchi raqam yuborganda qidiradi (kino yoki serial)"""
     code = message.text.strip().zfill(4)
 
     ok, not_subscribed = await check_subscriptions(bot, message.from_user.id)
@@ -128,13 +184,20 @@ async def search_by_code(message: Message, bot: Bot):
         await message.answer("⚠️ Ko'rish uchun avval kanallarga obuna bo'ling:", reply_markup=kb)
         return
 
+    # Avval kinoda qidiramiz
     movie = await get_movie_by_code(code)
     if movie:
         await update_movie_views(movie["id"])
         await send_movie_info(message, bot, movie, message.from_user.id)
         return
 
-    await message.answer(f"❌ <code>{code}</code> ID li kino topilmadi.", parse_mode="HTML")
+    # Kinoda topilmasa, serialda qidiramiz
+    serial = await get_serial_by_code(code)
+    if serial:
+        await send_serial_info(message, bot, serial, message.from_user.id)
+        return
+
+    await message.answer(f"❌ <code>{code}</code> ID li kino yoki serial topilmadi.", parse_mode="HTML")
 
 
 # ==================== WATCH ====================
@@ -149,12 +212,18 @@ async def watch_movie(cb: CallbackQuery, bot: Bot):
 
     await update_movie_views(movie_id)
 
-    if movie["video_file_id"]:
-        await cb.message.answer_video(
-            video=movie["video_file_id"],
-            caption=f"🎬 <b>{movie['title']}</b>\n\nTomosha qiling!",
-            parse_mode="HTML"
-        )
+    if movie["video_message_id"]:
+        # Baza kanaldan videoni forward qilish
+        try:
+            await bot.copy_message(
+                chat_id=cb.from_user.id,
+                from_chat_id=BASE_CHANNEL_ID,
+                message_id=movie["video_message_id"],
+                caption=f"🎬 <b>{movie['title']}</b>\n\nTomosha qiling!",
+                parse_mode="HTML"
+            )
+        except Exception as e:
+            await cb.message.answer(f"❌ Videoni yuklashda xatolik: {e}")
     elif movie["video_url"]:
         await cb.message.answer(
             f"🎬 <b>{movie['title']}</b>\n\n🎥 Ko'rish: {movie['video_url']}",
@@ -174,3 +243,64 @@ async def recheck_subscription(cb: CallbackQuery, bot: Bot):
         await cb.message.delete()
     else:
         await cb.answer("❌ Siz hali barcha kanallarga obuna bo'lmadingiz!", show_alert=True)
+
+
+# ==================== SEASON & EPISODE ====================
+
+@router.callback_query(F.data.startswith("season_"))
+async def show_season_episodes(cb: CallbackQuery, bot: Bot):
+    """Faslning qismlarini ko'rsatadi"""
+    season_id = int(cb.data.split("_")[1])
+    episodes = await get_episodes(season_id)
+    
+    if not episodes:
+        await cb.answer("❌ Bu faslda hali qismlar yo'q", show_alert=True)
+        return
+    
+    rows = []
+    for ep in episodes:
+        ep_title = ep['title'] or f"Qism {ep['episode_number']}"
+        rows.append([InlineKeyboardButton(
+            text=f"▶️ {ep_title}",
+            callback_data=f"episode_{ep['id']}"
+        )])
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=rows)
+    await cb.message.edit_reply_markup(reply_markup=kb)
+    await cb.answer()
+
+
+@router.callback_query(F.data.startswith("episode_"))
+async def watch_episode(cb: CallbackQuery, bot: Bot):
+    """Qismni ko'rsatadi"""
+    episode_id = int(cb.data.split("_")[1])
+    episode = await get_episode(episode_id)
+    
+    if not episode:
+        await cb.answer("❌ Qism topilmadi", show_alert=True)
+        return
+    
+    ep_title = episode['title'] or f"Qism {episode['episode_number']}"
+    
+    if episode["video_message_id"]:
+        # Baza kanaldan videoni forward qilish
+        try:
+            await bot.copy_message(
+                chat_id=cb.from_user.id,
+                from_chat_id=BASE_CHANNEL_ID,
+                message_id=episode["video_message_id"],
+                caption=f"📺 <b>{ep_title}</b>\n\nTomosha qiling!",
+                parse_mode="HTML"
+            )
+            await cb.answer()
+        except Exception as e:
+            await cb.message.answer(f"❌ Videoni yuklashda xatolik: {e}")
+            await cb.answer()
+    elif episode["video_url"]:
+        await cb.message.answer(
+            f"📺 <b>{ep_title}</b>\n\n🎥 Ko'rish: {episode['video_url']}",
+            parse_mode="HTML"
+        )
+        await cb.answer()
+    else:
+        await cb.answer("❌ Video hali qo'shilmagan", show_alert=True)

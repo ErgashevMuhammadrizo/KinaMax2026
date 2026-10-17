@@ -83,7 +83,7 @@ async def cancel_action(message: Message, state: FSMContext):
 # ==================== AUTO POST TO CHANNEL ====================
 
 async def post_movie_to_channel(bot: Bot, movie_id: int, code: str):
-    """Kino posterini asosiy kanalda, video yo'nalishini baza kanalda yuboradi."""
+    """Kino posterini asosiy kanalda yuboradi. Video allaqachon baza kanalda."""
     movie = await get_movie_by_id(movie_id)
     if not movie:
         return
@@ -123,28 +123,6 @@ async def post_movie_to_channel(bot: Bot, movie_id: int, code: str):
             )
     except Exception as e:
         logger.error(f'Asosiy kanalda post xatosi: {e}')
-
-    try:
-        if movie.get('video_url'):
-            video_caption = (
-                f"🎬 <b>{movie['title']}</b>\n\n"
-                f"🔑 ID: <code>{code}</code>\n"
-                f"🎥 Video: {movie['video_url']}"
-            )
-            await bot.send_message(
-                chat_id=BASE_CHANNEL_ID,
-                text=video_caption,
-                parse_mode='HTML'
-            )
-        elif movie.get('video_file_id'):
-            await bot.send_video(
-                chat_id=BASE_CHANNEL_ID,
-                video=movie['video_file_id'],
-                caption=f"🎬 <b>{movie['title']}</b>\n\n🔑 ID: <code>{code}</code>",
-                parse_mode='HTML'
-            )
-    except Exception as e:
-        logger.error(f'Baza kanalda video post xatosi: {e}')
 
 
 async def post_serial_to_channel(bot: Bot, serial_id: int, code: str):
@@ -239,24 +217,34 @@ async def add_movie_poster(message: Message, state: FSMContext):
 @router.message(AdminStates.add_movie_video)
 async def add_movie_video(message: Message, state: FSMContext, bot: Bot):
     data = await state.get_data()
-    video_file_id = None
+    video_message_id = None
     video_url = None
+    
     if message.text == "⏭ O'tkazib yuborish":
         pass
-    elif message.video:
-        # Xotira va RAMni tejash uchun afzal variant: URL bo'lsa saqlaymiz.
-        # Fayl ID ni faqat fallback sifatida qoldiramiz.
-        video_file_id = message.video.file_id
-    elif message.document:
-        video_file_id = message.document.file_id
+    elif message.video or message.document:
+        # Video yoki document fayl kelgan - baza kanalga yuklash
+        try:
+            if message.video:
+                sent_msg = await bot.send_video(
+                    chat_id=BASE_CHANNEL_ID,
+                    video=message.video.file_id,
+                    caption=f"🎬 {data['title']}\n\n⚠️ Ushbu video baza kanalidagi xizmat videosi."
+                )
+            else:
+                sent_msg = await bot.send_document(
+                    chat_id=BASE_CHANNEL_ID,
+                    document=message.document.file_id,
+                    caption=f"🎬 {data['title']}\n\n⚠️ Ushbu video baza kanalidagi xizmat videosi."
+                )
+            video_message_id = sent_msg.message_id
+        except Exception as e:
+            logger.error(f'Baza kanalga video yuklashda xatolik: {e}')
+            await message.answer(f"❌ Baza kanalga video yuklashda xatolik: {e}", reply_markup=admin_menu_kb())
+            await state.clear()
+            return
     elif message.text and (message.text.startswith('http://') or message.text.startswith('https://')):
         video_url = message.text.strip()
-        video_file_id = None
-
-    # Agar URL mavjud bo'lsa, yo'lakni saqlab qolamiz va fayl ID ni e'tiborga olmaymiz.
-    if not video_url and message.text and (message.text.startswith('http://') or message.text.startswith('https://')):
-        video_url = message.text.strip()
-        video_file_id = None
 
     movie_id = await add_movie(
         code='TEMP',
@@ -265,7 +253,7 @@ async def add_movie_video(message: Message, state: FSMContext, bot: Bot):
         year=data.get('year'),
         duration=data.get('duration'),
         poster_file_id=data.get('poster_file_id'),
-        video_file_id=video_file_id,
+        video_message_id=video_message_id,
         video_url=video_url
     )
     await state.clear()
@@ -277,7 +265,8 @@ async def add_movie_video(message: Message, state: FSMContext, bot: Bot):
         await message.answer(
             f"✅ <b>Kino qo'shildi!</b>\n\n"
             f"🔑 ID: <code>{code}</code>\n"
-            f"🎬 Nomi: {data['title']}\n\n"
+            f"🎬 Nomi: {data['title']}\n"
+            f"💾 Video baza kanalga yuklandi!\n\n"
             f"📢 Kanal: kanalga post qilinmoqda...",
             parse_mode='HTML',
             reply_markup=admin_menu_kb()
@@ -513,21 +502,45 @@ async def episode_title(message: Message, state: FSMContext):
 
 
 @router.message(AdminStates.add_episode_video)
-async def episode_video(message: Message, state: FSMContext):
+async def episode_video(message: Message, state: FSMContext, bot: Bot):
     data = await state.get_data()
-    video_file_id = None
+    video_message_id = None
     video_url = None
+    
     if message.text == "⏭ O'tkazib yuborish":
         pass
-    elif message.video:
-        video_file_id = message.video.file_id
-    elif message.document:
-        video_file_id = message.document.file_id
+    elif message.video or message.document:
+        # Video yoki document fayl kelgan - baza kanalga yuklash
+        try:
+            if message.video:
+                sent_msg = await bot.send_video(
+                    chat_id=BASE_CHANNEL_ID,
+                    video=message.video.file_id,
+                    caption=f"📺 {data['title']}\n\n⚠️ Ushbu video baza kanalidagi xizmat videosi."
+                )
+            else:
+                sent_msg = await bot.send_document(
+                    chat_id=BASE_CHANNEL_ID,
+                    document=message.document.file_id,
+                    caption=f"📺 {data['title']}\n\n⚠️ Ushbu video baza kanalidagi xizmat videosi."
+                )
+            video_message_id = sent_msg.message_id
+        except Exception as e:
+            logger.error(f'Baza kanalga video yuklashda xatolik: {e}')
+            await message.answer(f"❌ Baza kanalga video yuklashda xatolik: {e}", reply_markup=admin_menu_kb())
+            await state.clear()
+            return
     elif message.text and message.text.startswith('http'):
         video_url = message.text.strip()
-    await add_episode(data['season_id'], data['episode_number'], data['title'], video_file_id, video_url)
+    
+    await add_episode(data['season_id'], data['episode_number'], data['title'], video_message_id, video_url)
     await state.clear()
-    await message.answer(f"✅ Qism {data['episode_number']} qo'shildi!", parse_mode='HTML', reply_markup=admin_menu_kb())
+    await message.answer(
+        f"✅ Qism {data['episode_number']} qo'shildi!\n"
+        f"💾 Video baza kanalga yuklandi!",
+        parse_mode='HTML', 
+        reply_markup=admin_menu_kb()
+    )
 
 
 # ==================== SUBSCRIPTIONS ====================

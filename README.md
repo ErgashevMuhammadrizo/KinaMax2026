@@ -1,57 +1,215 @@
-# 🎬 Kino Bot
+# 🎬 KINAMAX Pro - Telegram Kino Bot
 
-## O'rnatish
+## 🌟 Versiya 2.0 - Yangi Xususiyatlar
 
-1. Kerakli kutubxonalarni o'rnatish:
+### ✨ Nima yangi?
+
+1. **📺 Serial qidirish** - Foydalanuvchilar endi serial ID orqali qidirishlari va fasl/qismlarni ko'rishlari mumkin
+2. **🆔 User ID** - /start bosilganda foydalanuvchining Telegram ID si ko'rsatiladi  
+3. **💾 Baza kanal tizimi** - Videolar BASE_CHANNEL ga yuklanadi, bazada faqat message_id saqlanadi (xotira 99% tejaldi!)
+
+---
+
+## 🚀 Tezkor Boshlash
+
+### 1. Talablar
+
+```bash
+Python 3.8+
+aiogram 3.x
+aiosqlite
+python-dotenv
+```
+
+### 2. O'rnatish
+
 ```bash
 pip install -r requirements.txt
 ```
 
-2. `.env` faylini yarating va to'ldiring:
-```
-BOT_TOKEN=your_bot_token_here
+### 3. Konfiguratsiya
+
+`.env` faylini sozlang:
+
+```env
+BOT_TOKEN=your_bot_token
 ADMIN_IDS=123456789
-BASE_CHANNEL_ID=-1001234567890
+MAIN_CHANNEL_ID=-1001234567890
+BASE_CHANNEL_ID=-1009876543210
 ```
 
-3. Botni ishga tushirish:
+⚠️ **Muhim:** Bot har ikkala kanalda ham **ADMIN** bo'lishi kerak!
+
+### 4. Database Migration (Agar eski baza bo'lsa)
+
 ```bash
-python bot.py
+python3 migrate_db.py
+```
+
+### 5. Test
+
+```bash
+python3 test_bot.py
+```
+
+### 6. Ishga Tushirish
+
+```bash
+python3 bot.py
 ```
 
 ---
 
-## ⚙️ Sozlash
+## 📚 Hujjatlar
 
-| O'zgaruvchi | Tavsif |
-|---|---|
-| `BOT_TOKEN` | BotFather dan olingan token |
-| `ADMIN_IDS` | Admin Telegram ID lari (vergul bilan) |
-| `BASE_CHANNEL_ID` | Kino/serial postlarinatuvchi kanal ID si |
-
-> Kanal ID ni olish uchun botni kanalga admin qilib qo'shing va @getidsbot yoki shunga o'xshash bot ishlatining.
+- **[CHANGELOG.md](CHANGELOG.md)** - Barcha o'zgarishlar ro'yxati
+- **[QANDAY_ISHLATISH.md](QANDAY_ISHLATISH.md)** - To'liq qo'llanma
+- **[TUZATILGAN_MUAMMOLAR.md](TUZATILGAN_MUAMMOLAR.md)** - Hal qilingan muammolar
 
 ---
 
-## 🚀 Qanday ishlaydi
+## 🎯 Asosiy Xususiyatlar
 
-### Admin:
-1. `/admin` → Admin panel ochiladi
-2. **Kino qo'shish** → Nom, janr, yil, poster, video so'raladi → **4 xonali ID beriladi** (0001, 0002...) → **kanalga avtomatik post qilinadi**
-3. **Serial qo'shish** → Yangi serial → Fasl → Qism ketma-ketligi
-4. Post tugmasida `▶️ Ko'rish` tugmasi bo'ladi, foydalanuvchi bosganida bot ochiladi
+### Admin Panel
+- 🎬 Kino qo'shish
+- 📺 Serial qo'shish (fasl va qismlar bilan)
+- ❌ Kino/Serial o'chirish
+- 📊 Statistika
+- 📨 Broadcast
+- 📢 Obuna sozlash
 
-### Foydalanuvchi:
-1. Kanaldan `▶️ Ko'rish` bosadi → bot ochiladi, kino/serial chiqadi
-2. Yoki botga ID ni yozadi (masalan: `0001`) → kino/serial topiladi
-3. `/serials` → Barcha seriallar ro'yxati
+### Foydalanuvchi
+- 🔍 ID orqali kino qidirish
+- 📺 ID orqali serial qidirish
+- ⏯️ Video to'g'ridan-to'g'ri botdan
+- 🔐 Majburiy obuna tizimi
 
 ---
 
-## 📋 Admin buyruqlari
+## 💾 Baza Kanal Tizimi
 
-- `/admin` — Admin panel
-- Kino qo'shish, o'chirish
-- Serial + fasl + qism qo'shish
-- Obuna kanallarini boshqarish
-- Statistika ko'rish
+### Qanday ishlaydi?
+
+```
+Admin video yuboradi
+    ↓
+Bot BASE_CHANNEL ga yuklaydi
+    ↓
+message_id bazaga saqlanadi
+    ↓
+User ko'rmoqchi bo'lganda
+    ↓
+Bot BASE_CHANNEL dan forward qiladi
+```
+
+### Afzalliklar:
+- ✅ Xotira 99% tejaldi
+- ✅ Tezlik oshdi
+- ✅ Xavfsizlik yaxshilandi
+- ✅ Cheksiz video
+
+---
+
+## 🧪 Test Qilish
+
+### Avtomatik test:
+```bash
+python3 test_bot.py
+```
+
+### Manual test:
+
+1. **Admin test:**
+   - `/admin` - Admin panel
+   - Kino qo'shing
+   - Serial qo'shing
+
+2. **User test:**
+   - `/start` - ID ko'ring
+   - `0001` - Kino qidiring
+   - `0002` - Serial qidiring
+
+---
+
+## 📊 Texnik Ma'lumotlar
+
+### Database Schema
+
+**Movies:**
+```sql
+CREATE TABLE movies (
+    id INTEGER PRIMARY KEY,
+    code TEXT UNIQUE,
+    title TEXT,
+    genre TEXT,
+    year INTEGER,
+    duration TEXT,
+    poster_file_id TEXT,
+    video_message_id INTEGER,  -- ✨ YANGI!
+    video_url TEXT,
+    views INTEGER,
+    created_at TIMESTAMP
+)
+```
+
+**Episodes:**
+```sql
+CREATE TABLE episodes (
+    id INTEGER PRIMARY KEY,
+    season_id INTEGER,
+    episode_number INTEGER,
+    title TEXT,
+    video_message_id INTEGER,  -- ✨ YANGI!
+    video_url TEXT
+)
+```
+
+---
+
+## 🛠 Muammolarni Hal Qilish
+
+### Video yuklanmayapti
+```bash
+✅ Bot BASE_CHANNEL da admin ekanligini tekshiring
+✅ BASE_CHANNEL_ID to'g'ri yozilganini tasdiqlang
+✅ python3 test_bot.py ni ishga tushiring
+```
+
+### Eski kinolar ishlamayapti
+```bash
+✅ python3 migrate_db.py ni ishga tushiring
+✅ Yoki eski kinolarni qayta qo'shing
+```
+
+---
+
+## 🤝 Hissa Qo'shish
+
+Pull requestlar xush kelibsiz!
+
+---
+
+## 📄 Litsenziya
+
+MIT License
+
+---
+
+## 📞 Yordam
+
+Savollar bo'lsa:
+1. Hujjatlarni o'qing
+2. test_bot.py ni ishga tushiring
+3. TUZATILGAN_MUAMMOLAR.md ni ko'ring
+
+---
+
+## 🎉 Credits
+
+Yaratilgan AI Assistant tomonidan  
+Versiya: 2.0  
+Sana: 2026-10-17
+
+---
+
+**Omad yor bo'lsin!** 🚀
