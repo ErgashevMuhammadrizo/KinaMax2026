@@ -7,7 +7,7 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
-from config import ADMIN_IDS, BASE_CHANNEL_ID
+from config import ADMIN_IDS, MAIN_CHANNEL_ID, BASE_CHANNEL_ID
 from keyboards.admin_kb import admin_menu_kb, cancel_kb, skip_kb, subscriptions_manage_kb
 from database.db import (
     add_movie, get_movie_by_code, delete_movie,
@@ -83,10 +83,11 @@ async def cancel_action(message: Message, state: FSMContext):
 # ==================== AUTO POST TO CHANNEL ====================
 
 async def post_movie_to_channel(bot: Bot, movie_id: int, code: str):
-    """Kino kanalga post qiladi"""
+    """Kino posterini asosiy kanalda, video yo'nalishini baza kanalda yuboradi."""
     movie = await get_movie_by_id(movie_id)
     if not movie:
         return
+
     bot_info = await bot.get_me()
     bot_username = bot_info.username
     caption = (
@@ -96,21 +97,54 @@ async def post_movie_to_channel(bot: Bot, movie_id: int, code: str):
         f"🕒 Davomiyligi: {movie['duration'] or '—'}\n\n"
         f"🔑 ID: <code>{code}</code>"
     )
-    kb = InlineKeyboardMarkup(inline_keyboard=[
+
+    main_kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(
             text="▶️ Ko'rish",
             url=f"https://t.me/{bot_username}?start=movie_{code}"
         )]
     ])
+
     try:
         if movie['poster_file_id']:
-            await bot.send_photo(chat_id=BASE_CHANNEL_ID, photo=movie['poster_file_id'],
-                                  caption=caption, parse_mode='HTML', reply_markup=kb)
+            await bot.send_photo(
+                chat_id=MAIN_CHANNEL_ID,
+                photo=movie['poster_file_id'],
+                caption=caption,
+                parse_mode='HTML',
+                reply_markup=main_kb
+            )
         else:
-            await bot.send_message(chat_id=BASE_CHANNEL_ID, text=caption,
-                                    parse_mode='HTML', reply_markup=kb)
+            await bot.send_message(
+                chat_id=MAIN_CHANNEL_ID,
+                text=caption,
+                parse_mode='HTML',
+                reply_markup=main_kb
+            )
     except Exception as e:
-        logger.error(f'Kanalga post xatosi: {e}')
+        logger.error(f'Asosiy kanalda post xatosi: {e}')
+
+    try:
+        if movie.get('video_url'):
+            video_caption = (
+                f"🎬 <b>{movie['title']}</b>\n\n"
+                f"🔑 ID: <code>{code}</code>\n"
+                f"🎥 Video: {movie['video_url']}"
+            )
+            await bot.send_message(
+                chat_id=BASE_CHANNEL_ID,
+                text=video_caption,
+                parse_mode='HTML'
+            )
+        elif movie.get('video_file_id'):
+            await bot.send_video(
+                chat_id=BASE_CHANNEL_ID,
+                video=movie['video_file_id'],
+                caption=f"🎬 <b>{movie['title']}</b>\n\n🔑 ID: <code>{code}</code>",
+                parse_mode='HTML'
+            )
+    except Exception as e:
+        logger.error(f'Baza kanalda video post xatosi: {e}')
 
 
 async def post_serial_to_channel(bot: Bot, serial_id: int, code: str):
@@ -210,11 +244,19 @@ async def add_movie_video(message: Message, state: FSMContext, bot: Bot):
     if message.text == "⏭ O'tkazib yuborish":
         pass
     elif message.video:
+        # Xotira va RAMni tejash uchun afzal variant: URL bo'lsa saqlaymiz.
+        # Fayl ID ni faqat fallback sifatida qoldiramiz.
         video_file_id = message.video.file_id
     elif message.document:
         video_file_id = message.document.file_id
     elif message.text and (message.text.startswith('http://') or message.text.startswith('https://')):
         video_url = message.text.strip()
+        video_file_id = None
+
+    # Agar URL mavjud bo'lsa, yo'lakni saqlab qolamiz va fayl ID ni e'tiborga olmaymiz.
+    if not video_url and message.text and (message.text.startswith('http://') or message.text.startswith('https://')):
+        video_url = message.text.strip()
+        video_file_id = None
 
     movie_id = await add_movie(
         code='TEMP',
