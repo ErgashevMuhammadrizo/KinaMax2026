@@ -1,9 +1,15 @@
+import os
+
 import aiosqlite
 
 DB_PATH = "database/kino_bot.db"
 
 
 async def init_db():
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    if os.path.exists(DB_PATH) and os.path.getsize(DB_PATH) == 0:
+        open(DB_PATH, "wb").close()
+
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("""
             CREATE TABLE IF NOT EXISTS movies (
